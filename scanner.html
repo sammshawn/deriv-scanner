@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deriv Digit Scanner — Live</title>
+  <link rel="stylesheet" href="scanner.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        Deriv Digit Scanner
+      </div>
+      <div class="status" id="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- CONTROL CARD -->
+    <section class="control-card">
+      <label class="control-label">
+        Market
+        <select id="marketSelect">
+          <option value="R_10">Volatility 10</option>
+          <option value="R_25">Volatility 25</option>
+          <option value="R_50">Volatility 50</option>
+          <option value="R_75">Volatility 75</option>
+          <option value="R_100" selected>Volatility 100</option>
+          <option value="1HZ10V">Volatility 10 (1s)</option>
+          <option value="1HZ25V">Volatility 25 (1s)</option>
+          <option value="1HZ50V">Volatility 50 (1s)</option>
+          <option value="1HZ75V">Volatility 75 (1s)</option>
+          <option value="1HZ100V">Volatility 100 (1s)</option>
+        </select>
+      </label>
+
+      <div class="control-actions">
+        <button id="resetBtn" class="btn btn-outline">Reset counts</button>
+      </div>
+    </section>
+
+    <!-- SIGNAL BANNER (the eye-catching card) -->
+    <section class="signal-banner" id="signalBanner">
+      <div class="signal-icon" id="signalIcon">📊</div>
+      <div class="signal-body">
+        <div class="signal-title" id="signalTitle">Waiting for data…</div>
+        <div class="signal-sub" id="signalSub">
+          Collecting ticks from Deriv. First signals appear after 20 ticks.
+        </div>
+      </div>
+      <div class="signal-pct" id="signalPct">—</div>
+    </section>
+
+    <!-- MAIN STATS GRID -->
+    <section class="stats-grid">
+
+      <!-- HOT DIGITS -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">🔥</span>
+          <h3>Hot Digits</h3>
+        </div>
+        <div class="stat-body" id="hotDigits">
+          <p class="muted">Waiting for ticks…</p>
+        </div>
+      </div>
+
+      <!-- COLD DIGITS -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">❄️</span>
+          <h3>Cold Digits</h3>
+        </div>
+        <div class="stat-body" id="coldDigits">
+          <p class="muted">Waiting for ticks…</p>
+        </div>
+      </div>
+
+      <!-- TICK COUNTER -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">📈</span>
+          <h3>Total Ticks</h3>
+        </div>
+        <div class="stat-body big-number" id="tickCount">0</div>
+      </div>
+
+      <!-- DEVIATION -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">⚡</span>
+          <h3>Max Deviation</h3>
+        </div>
+        <div class="stat-body big-number" id="maxDeviation">0.0%</div>
+      </div>
+
+    </section>
+
+    <!-- DIGIT BARS -->
+    <section class="digit-chart-card">
+      <div class="chart-header">
+        <h3>Digit Distribution</h3>
+        <p class="muted">Expected 10% per digit. Bars above 10% are hot, below are cold.</p>
+      </div>
+      <div class="digit-bars" id="digitBars">
+        <!-- bars injected by JS -->
+      </div>
+    </section>
+
+    <!-- RECENT TICKS -->
+    <section class="recent-card">
+      <h3>Recent Ticks</h3>
+      <div class="recent-list" id="recentList">
+        <p class="muted">No ticks yet…</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>Deriv Digit Scanner · <span id="footerMarket">Volatility 100</span> · Not financial advice</p>
+  </footer>
+
+  <script src="scanner.js"></script>
+</body>
+</html>
