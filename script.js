@@ -1,10 +1,16 @@
 // ============================================
 //  DERIV DIGIT FREQUENCY SCANNER
-//  Live WebSocket connection to Deriv API
+//  Fixed: correct WS URL + per-market decimals
 // ============================================
 
-const APP_ID = 1089; // Deriv public demo app_id (fine for market data)
-const WS_URL = `wss://api.derivws.com/trading/v1/options/ws/public`;
+const APP_ID = 1089;
+const WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
+
+// Decimals per market (from live observation)
+const DECIMALS_BY_SYMBOL = {
+  R_10: 3, R_25: 3, R_50: 4, R_75: 4, R_100: 2,
+  "1HZ10V": 2, "1HZ25V": 2, "1HZ50V": 2, "1HZ75V": 2, "1HZ100V": 2,
+};
 
 // ---- STATE ----
 let ws = null;
@@ -35,6 +41,11 @@ const maxDevEl     = document.getElementById("maxDeviation");
 const digitBarsEl  = document.getElementById("digitBars");
 const recentListEl = document.getElementById("recentList");
 
+// ---- HELPERS ----
+function getDecimals(symbol) {
+  return DECIMALS_BY_SYMBOL[symbol] !== undefined ? DECIMALS_BY_SYMBOL[symbol] : 2;
+}
+
 // ---- WEBSOCKET CONNECTION ----
 function connect() {
   setStatus("connecting", "Connecting…");
@@ -49,14 +60,12 @@ function connect() {
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
 
-    // Handle errors from Deriv
     if (data.error) {
       console.error("Deriv error:", data.error);
       setStatus("error", data.error.message || "Error");
       return;
     }
 
-    // Handle tick stream
     if (data.msg_type === "tick" && data.tick) {
       handleTick(data.tick);
     }
@@ -75,30 +84,30 @@ function connect() {
 function subscribeTicks() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-  // Forget previous subscription
   ws.send(JSON.stringify({ forget_all: "ticks" }));
-
-  // Subscribe to new symbol
   ws.send(JSON.stringify({
     ticks: currentSymbol,
     subscribe: 1,
   }));
 }
 
-// ---- TICK HANDLER ----
+// ---- TICK HANDLER (fixed: per-market decimals) ----
 function handleTick(tick) {
-  const quote = tick.quote.toFixed(2);
-  const lastDigit = parseInt(quote.slice(-1), 10);
+  const decimals = getDecimals(tick.symbol || currentSymbol);
+  const quoteNum = parseFloat(tick.quote);
+  if (!Number.isFinite(quoteNum)) return;
 
-  // Update counts
+  const quoteStr = quoteNum.toFixed(decimals);
+  const lastChar = quoteStr.slice(-1);
+  const lastDigit = parseInt(lastChar, 10);
+  if (!Number.isInteger(lastDigit) || lastDigit < 0 || lastDigit > 9) return;
+
   digitCounts[lastDigit]++;
   totalTicks++;
 
-  // Add to recent list
-  recentTicks.unshift({ quote, digit: lastDigit });
+  recentTicks.unshift({ quote: quoteStr, digit: lastDigit });
   if (recentTicks.length > MAX_RECENT) recentTicks.pop();
 
-  // Render
   render();
 }
 
@@ -128,7 +137,6 @@ function renderStats() {
 }
 
 function renderDigitBars() {
-  // Build bars once, then update heights
   if (digitBarsEl.children.length === 0) {
     for (let d = 0; d < 10; d++) {
       const wrap = document.createElement("div");
@@ -143,7 +151,6 @@ function renderDigitBars() {
   }
 
   const maxCount = Math.max(...digitCounts, 1);
-  const expected = totalTicks > 0 ? totalTicks / 10 : 1;
 
   for (let d = 0; d < 10; d++) {
     const bar = digitBarsEl.querySelector(`[data-bar="${d}"]`);
@@ -154,7 +161,6 @@ function renderDigitBars() {
     bar.style.height = Math.max(4, heightPct) + "%";
     pctEl.textContent = pct.toFixed(1) + "%";
 
-    // Colour based on deviation from expected 10%
     bar.classList.remove("hot", "cold");
     if (totalTicks >= MIN_TICKS_FOR_SIGNAL) {
       if (pct > 12) bar.classList.add("hot");
@@ -181,29 +187,21 @@ function renderHotCold() {
   const hot = sorted.slice(0, 3);
   const cold = sorted.slice(-3).reverse();
 
-  hotDigitsEl.innerHTML = hot
-    .map(
-      (h) => `
+  hotDigitsEl.innerHTML = hot.map((h) => `
     <div class="digit-row hot">
       <div class="digit-big">${h.digit}</div>
       <div class="digit-meta">${h.count} hits</div>
       <div class="digit-pct">${h.pct.toFixed(1)}%</div>
     </div>
-  `
-    )
-    .join("");
+  `).join("");
 
-  coldDigitsEl.innerHTML = cold
-    .map(
-      (c) => `
+  coldDigitsEl.innerHTML = cold.map((c) => `
     <div class="digit-row cold">
       <div class="digit-big">${c.digit}</div>
       <div class="digit-meta">${c.count} hits</div>
       <div class="digit-pct">${c.pct.toFixed(1)}%</div>
     </div>
-  `
-    )
-    .join("");
+  `).join("");
 }
 
 function renderSignal() {
@@ -216,14 +214,11 @@ function renderSignal() {
     return;
   }
 
-  // Find the most deviated digit
   let best = { digit: 0, pct: 10, dev: 0 };
   for (let d = 0; d < 10; d++) {
     const pct = (digitCounts[d] / totalTicks) * 100;
     const dev = Math.abs(pct - 10);
-    if (dev > best.dev) {
-      best = { digit: d, pct, dev };
-    }
+    if (dev > best.dev) best = { digit: d, pct, dev };
   }
 
   const direction = best.pct > 10 ? "hot" : "cold";
@@ -254,17 +249,13 @@ function renderRecent() {
     return;
   }
 
-  recentListEl.innerHTML = recentTicks
-    .map(
-      (t) => `
+  recentListEl.innerHTML = recentTicks.map((t) => `
     <div class="tick-item">
       <span class="tick-price">${t.quote}</span>
       <span>→</span>
       <span class="tick-digit">${t.digit}</span>
     </div>
-  `
-    )
-    .join("");
+  `).join("");
 }
 
 // ---- STATUS ----
