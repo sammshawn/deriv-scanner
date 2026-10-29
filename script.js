@@ -4,7 +4,7 @@
 // ============================================
 
 const APP_ID = 1089;
-const WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
+const WS_URL = `wss://api.derivws.com/trading/v1/options/ws/public`;
 
 // Decimals per market (from live observation)
 const DECIMALS_BY_SYMBOL = {
